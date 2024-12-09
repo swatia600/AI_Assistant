@@ -9,8 +9,8 @@ import re
 # SMTP email configuration
 SMTP_SERVER = 'smtp.gmail.com'
 SMTP_PORT = 587
-EMAIL_ADDRESS = 'varunsahni10134@gmail.com'
-EMAIL_PASSWORD = 'puxj stps vxyb taub'
+EMAIL_ADDRESS = 'swatia600@gmail.com'
+EMAIL_PASSWORD = 'pass'
 
 # Parse the command using the local LLM
 def parse_command_with_llm(command):
@@ -59,7 +59,7 @@ def generate_email_content(recipient_name, content, context_detail):
         f"Ensure all line breaks are represented as '\\n' and special characters are properly escaped in the JSON.\n"
         f"Return the output strictly in **JSON format** with two fields: 'subject' and 'body'. Do not include any additional text, explanations, or code.\n\n"
         f"Example of the required JSON format:\n"
-        f"{{\n  \"subject\": \"Your subject here\",\n  \"body\": \"Dear RecipientName,\\n\\nYour email body here.\\n\\nRegards,\\n\\nVarun\"\n}}\n"
+        f"{{\n  \"subject\": \"Your subject here\",\n  \"body\": \"Dear RecipientName,\\n\\nYour email body here.\\n\\nRegards,\\n\\Swati\"\n}}\n"
         f"Output the JSON object only, with no extra text."
     )
     response = common.ask_local_llm(question)

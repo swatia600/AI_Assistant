@@ -1,5 +1,9 @@
 import ollama
 from transformers import T5Tokenizer, T5ForConditionalGeneration
+from langchain.llms.base import LLM
+from typing import Optional
+from pydantic import BaseModel
+
 
 # Initialize the tokenizer and model for natural language processing
 checkpoint = "google/flan-t5-large"
@@ -35,6 +39,18 @@ def find_recipient_email_with_llm(recipient_name):
     else:
         return input("No close matches found in email database. Please input the email id : ")
 
+class LocalLLM(LLM, BaseModel):
+    model_name: str = "llama3.2:3b"  # Declaring the model name as a field
+
+    @property
+    def _llm_type(self) -> str:
+        return "local_llm"
+
+    def _call(self, prompt: str, stop: Optional[list] = None) -> str:
+        # Call the `ask_local_llm` function with the prompt
+        response = ask_local_llm(prompt)
+        return response
+    
 def ask_local_llm(question, context=None):
     Model = 'llama3.2:3b'
     

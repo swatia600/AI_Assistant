@@ -48,30 +48,10 @@ def process_data(full_text):
     db = FAISS.from_documents(documents, embeddings)
     return db
 
-from langchain.llms.base import LLM
-from typing import Optional
-
-from pydantic import BaseModel
-from langchain.llms.base import LLM
-from typing import Optional
-
-class LocalLLM(LLM, BaseModel):
-    model_name: str = "llama3.2:3b"  # Declaring the model name as a field
-
-    @property
-    def _llm_type(self) -> str:
-        return "local_llm"
-
-    def _call(self, prompt: str, stop: Optional[list] = None) -> str:
-        # Call the `ask_local_llm` function with the prompt
-        response = common.ask_local_llm(prompt)
-        return response
-
-
 def read_pdf_and_answer(user_input):
     """Open a dialog for selecting files or folder, extract text, and answer questions."""
     print("Please select PDF files.")
-    llm = LocalLLM()
+    llm = common.LocalLLM()
     selection, selection_type = open_file_or_folder_dialog()
     
     if not selection:
@@ -85,6 +65,7 @@ def read_pdf_and_answer(user_input):
 
     
     # Continue answering questions until the user exits
+    chat_history = []
     print("You can now ask questions about the content in the PDFs. Type 'exit' to stop.")
     while True:
         question = input("Enter your question or write 'exit' to return to the main menu: ")
@@ -104,7 +85,7 @@ def read_pdf_and_answer(user_input):
             retriever=db.as_retriever(search_kwargs={'k': 4}),
         )
         
-        result = conversation_chain.invoke({"question": prompt, "chat_history": []})
+        result = conversation_chain.invoke({"question": prompt, "chat_history": chat_history})
         
 
         llm_response = result['answer'].strip() if result['answer'] else "{}"
@@ -115,4 +96,5 @@ def read_pdf_and_answer(user_input):
         if llm_response.startswith("```") and llm_response.endswith("```"):
             llm_response = llm_response.strip("```").strip()
         #answer = common.ask_local_llm(prompt, context=context)
+        chat_history.append((question, llm_response))
         print(f"Answer: {llm_response}")

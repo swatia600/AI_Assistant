@@ -3,6 +3,8 @@ import requests
 import json
 import re
 from transformers import T5Tokenizer, T5ForConditionalGeneration
+from langchain.prompts import PromptTemplate
+from langchain.chains import LLMChain
 import email_functionality as email
 import pdf_functionality
 import calendar_functionality
@@ -26,8 +28,41 @@ class MonicaAssistant:
             "handle document": "reading, summarizing, explaining, or analyzing a PDF or document",
             "web search": "searching the internet for general questions, information, or random things"
         }
+        self.llm = common.LocalLLM()
+        self.classification_chain = self._create_classification_chain()
 
+    def _create_classification_chain(self):
+        # Define the prompt for task classification
+        prompt_template = PromptTemplate(
+            input_variables=["user_input"],
+            template=(
+                "Analyze the user's input and classify it as one of the following four tasks:\n"
+                "1. 'send email': For email-related actions (e.g., write an email, send an email).\n"
+                "2. 'schedule event': For calendar events (e.g., schedule a meeting, add a reminder).\n"
+                "3. 'handle document': For actions involving PDFs or documents (e.g., read pdf, summarize document).\n"
+                "4. 'web search': For general informational queries (e.g., search for information, look up news).\n"
+                "If the input does not match any of these, respond with 'unrecognized'.\n\n"
+                "Return only the task type(eg. send email, schedule event, handle document, web search) without additional explanation.\n\n"
+                "User input: {user_input}"
+            )
+        )
+        print(prompt_template)
+        return LLMChain(llm=self.llm, prompt=prompt_template)
+    
     def llm_do_task(self, user_input):
+        # Run the classification chain to get the task type
+        result = self.classification_chain.invoke(user_input)
+        print(result)
+        task_type = result['text'].strip().lower()
+        task_function = self.task_map.get(task_type)
+        print(task_function)
+        # Execute the identified task or ask for clarification
+        if task_function:
+            task_function(user_input)
+        else:
+            self.ask_for_clarification(user_input)
+
+    def llm_do_task_old(self, user_input):
         # Prompt to classify the user input query: This way LLM will intelligently clissigy the user input
         question = (
             "Analyze the user's input and classify it as one of the following four tasks:\n"
