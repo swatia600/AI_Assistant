@@ -12,7 +12,7 @@ from langchain.chains import LLMChain
 SMTP_SERVER = 'smtp.gmail.com'
 SMTP_PORT = 587
 EMAIL_ADDRESS = 'swatia600@gmail.com'
-EMAIL_PASSWORD = 'nbvj bkgp elrf ltpq'
+EMAIL_PASSWORD = 'pass'
 
 # Parse the command using the local LLM
 def parse_command_with_langchain(command):
