@@ -46,49 +46,17 @@ class MonicaAssistant:
                 "User input: {user_input}"
             )
         )
-        print(prompt_template)
+        #print(prompt_template)
         return LLMChain(llm=self.llm, prompt=prompt_template)
     
     def llm_do_task(self, user_input):
         # Run the classification chain to get the task type
         result = self.classification_chain.invoke(user_input)
-        print(result)
+        #print(result)
         task_type = result['text'].strip().lower()
         task_function = self.task_map.get(task_type)
         print(task_function)
         # Execute the identified task or ask for clarification
-        if task_function:
-            task_function(user_input)
-        else:
-            self.ask_for_clarification(user_input)
-
-    def llm_do_task_old(self, user_input):
-        # Prompt to classify the user input query: This way LLM will intelligently clissigy the user input
-        question = (
-            "Analyze the user's input and classify it as one of the following four tasks:\n"
-            "1. 'send email': If the user's input is related to sending someone an email, mailing someone, "
-            "or writing an email.\n"
-            "2. 'schedule event': For any type of event, meeting, reminder, or task that needs to be scheduled "
-            "in Google Calendar.\n"
-            "3. 'handle document': For actions involving documents or PDFs such as reading, summarizing, "
-            "explaining, analyzing, or answering questions based on a document.\n"
-            "4. 'web search': For any general question or informational query, or other items not covered by the first three categories, "
-            "such as 'What is pizza?', 'Tell me about climate change,' or 'Search for the latest news.'\n"
-            "If the task does not match any of these, respond with exactly 'unrecognized'.\n\n"
-            "Return only the task type if you recognize it or 'unrecognized'.\n"
-            f"User input: '{user_input}'"
-        )
-
-        # Retrieve task type from Local LLM
-        raw_task_type = common.ask_local_llm(question).strip()
-        
-        # Normalizing the task_type by removing extra quotes and parentheses to ensure no extra characters are there in the response
-        task_type = re.sub(r'[^a-zA-Z\s]', '', raw_task_type).strip().lower()
-        #print(f"Classified task: {task_type}")  # Debugging line to verify task type
-
-        # Dynamically call the appropriate function based on the task_map
-        task_function = self.task_map.get(task_type)
-        #print("Task Function:", task_function)
         if task_function:
             task_function(user_input)
         else:

@@ -8,6 +8,9 @@ import datetime
 import re
 import os.path
 from dateutil import parser as date_parser
+from langchain.prompts import PromptTemplate
+from langchain.chains import LLMChain
+
 import pytz  # Add this import for timezone handling
 
 def setup_google_calendar_api():
@@ -24,6 +27,83 @@ def setup_google_calendar_api():
             with open("token.json", "w") as token:
                 token.write(creds.to_json())
     return build('calendar', 'v3', credentials=creds)
+
+def parse_meeting_details_with_langchain(user_input):
+    llm = common.LocalLLM()
+    prompt = PromptTemplate(
+        input_variables=["user_input"],
+        template=(
+        "You are an AI assistant specializing in extracting structured meeting details from user inputs. "
+        "Analyze the following user input and extract the meeting information. "
+        "Return the details in JSON format with the following fields: "
+        "'title', 'date', 'time', 'participants', and 'agenda'.\n\n"
+        "Rules:\n"
+        "1. Always return the output strictly as a JSON object without any additional text or explanation.\n"
+        "2. For 'date':\n"
+        "   - Use (yyyy-mm-dd) format.\n"
+        "   - If the input specifies a day (e.g., 'Friday') or an ordinal date (e.g., '8th'), calculate the closest upcoming date in the future.\n"
+        "   - If the input does not specify a date, leave the field as an empty string ('').\n"
+        "3. For 'time':\n"
+        "   - Use 24-hour format (HH:MM).\n"
+        "   - If only a time is provided (e.g., '4 PM'), assume the closest occurrence (today if in the future, otherwise tomorrow).\n"
+        "   - If the input does not specify a time, leave the field as an empty string ('').\n"
+        "4. For 'participants':\n"
+        "   - Extract participants mentioned in the input.\n"
+        "   - If no participants are mentioned, set the field to an empty list ([]).\n"
+        "5. For 'agenda':\n"
+        "   - Extract any relevant phrases or keywords related to the purpose of the meeting.\n"
+        "   - If no agenda is provided, leave the field as an empty string ('').\n"
+        "6. For 'title':\n"
+        "   - Use the input to derive a descriptive title for the meeting.\n"
+        "   - If no title can be inferred, set it to 'Appointment' or leave it empty ('') if it's a generic request.\n"
+        "7. Do not infer or assume details not explicitly mentioned in the input.\n\n"
+        "User input: {user_input}\n"
+        ),
+    )
+    chain = LLMChain(llm=llm, prompt=prompt)
+
+    combined_input = user_input
+    required_fields = ['title', 'date', 'time']
+    first = True
+
+    while True:
+        result = chain.invoke({"user_input": combined_input})
+        response = result['text'].strip().lower()
+        print(response)
+        try:
+            # Extracting the JSON from response and parsing it
+            json_str_match = re.search(r'\{.*\}', response, re.DOTALL)
+            if json_str_match:
+                json_str = json_str_match.group(0)
+
+                # Replacing actual newlines with escaped newlines for JSON parsing
+                json_str = json_str.replace('\n', '\\n')
+                meeting_details_part = json.loads(json_str)
+        except (json.JSONDecodeError, AttributeError):
+            print("Failed to parse meeting details. Please try again.")
+            return None
+
+        # Combine new meeting details with existing ones
+        if first:
+            meeting_details = meeting_details_part
+            first = False
+        else:
+            for field in meeting_details:
+                if not meeting_details.get(field):
+                    meeting_details[field] = meeting_details_part.get(field)
+
+        # Check for missing required fields
+        required_fields = ['title', 'date', 'time']
+        missing_fields = [field for field in required_fields if not meeting_details.get(field)]
+        if not missing_fields:
+            # All required fields are present
+            return meeting_details
+        else:
+            # Inform the user about missing fields
+            missing_fields_str = ', '.join(missing_fields)
+            print(f"The following information is missing: {missing_fields_str}.")
+            additional_input = input("Please provide the missing information: ")
+            combined_input += " " + additional_input.strip()
 
 def parse_meeting_details(user_input):
     # Initializing combined input with the initial user input
@@ -57,30 +137,31 @@ def parse_meeting_details(user_input):
 
                 # Replacing actual newlines with escaped newlines for JSON parsing
                 json_str = json_str.replace('\n', '\\n')
-                meeting_details = json.loads(json_str)
+                meeting_details_part = json.loads(json_str)
         except (json.JSONDecodeError, AttributeError):
             print("Failed to parse meeting details. Please try again.")
             return None
 
-        # Checking for missing required fields  
-        if first :
-            main_meeting_details = meeting_details
+        # Combine new meeting details with existing ones
+        if first:
+            meeting_details = meeting_details_part
             first = False
         else:
-            for f in main_meeting_details:
-                if not main_meeting_details.get(f):
-                    main_meeting_details[f] = meeting_details.get(f)
+            for field in meeting_details:
+                if not meeting_details.get(field):
+                    meeting_details[field] = meeting_details_part.get(field)
 
-        missing_fields = [field for field in required_fields if not main_meeting_details.get(field)]
+        # Check for missing required fields
+        required_fields = ['title', 'date', 'time']
+        missing_fields = [field for field in required_fields if not meeting_details.get(field)]
         if not missing_fields:
             # All required fields are present
-            return main_meeting_details
+            return meeting_details
         else:
-            # Informing the user about missing fields
+            # Inform the user about missing fields
             missing_fields_str = ', '.join(missing_fields)
             print(f"The following information is missing: {missing_fields_str}.")
             additional_input = input("Please provide the missing information: ")
-            # Combining the new input with previous inputs
             combined_input += " " + additional_input.strip()
 
 def parse_relative_date(date_text):
@@ -132,7 +213,7 @@ def suggest_alternate_slots(calendar_service, start_datetime, duration=1, num_sl
 
 def schedule_meeting(user_input):
     calendar_service = setup_google_calendar_api()
-    meeting_details = parse_meeting_details(user_input)
+    meeting_details = parse_meeting_details_with_langchain(user_input)
     
     if not meeting_details:
         print("Unable to schedule the meeting due to missing details.")

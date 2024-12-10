@@ -5,14 +5,51 @@ from email.mime.multipart import MIMEMultipart
 from typing import Dict
 import common as common 
 import re
+from langchain.prompts import PromptTemplate
+from langchain.chains import LLMChain
 
 # SMTP email configuration
 SMTP_SERVER = 'smtp.gmail.com'
 SMTP_PORT = 587
 EMAIL_ADDRESS = 'swatia600@gmail.com'
-EMAIL_PASSWORD = 'pass'
+EMAIL_PASSWORD = 'nbvj bkgp elrf ltpq'
 
 # Parse the command using the local LLM
+def parse_command_with_langchain(command):
+    llm = common.LocalLLM()
+    prompt = PromptTemplate(
+    input_variables=["command"],
+    template=(
+        f"I need to draft an email based on the following user input. Please analyze the input to identify the recipient's name and the main message content.\n\n"
+        f"Return the output strictly in **JSON format** with two fields: 'recipient' and 'content'. Do not include any additional text, explanations, or code.\n\n"
+        f"Instructions:\n"
+        f"- Parse only the recipient's name and the message content from the input.\n"
+        f"- If the input does not specify a recipient's name or email content, set the respective JSON field empty.\n\n"
+        f"Examples:\n"
+        f"1. User Input: 'send a thank you email to Steve Jobs for the opportunity'\n"
+        f"   Expected Output: {{'recipient': 'Steve Jobs', 'content': 'Thank you for the opportunity.'}}\n\n"
+        f"2. User Input: 'write an email to Bill to say congratulations on the new release'\n"
+        f"   Expected Output: {{'recipient': 'Bill', 'content': 'Congratulations on the new release.'}}\n\n"
+        f"3. User Input: 'write an email to Tom'\n"
+        f"   Expected Output: {{'recipient': 'Tom', 'content': ''}}\n\n"
+        f"Now, analyze the command: '{command}'"
+    ),
+    )
+    chain = LLMChain(llm=llm, prompt=prompt)
+    result = chain.invoke({"command": command})
+    response = result['text'].strip().lower()
+    #response = common.ask_local_llm(question)
+    try:
+        # Attempt to parse the response as JSON using eval, or better yet use json.loads if it is valid JSON.
+        parsed_content = eval(response.strip())
+        recipient = parsed_content.get("recipient")
+        content = parsed_content.get("content")
+        #print(parsed_content)
+        return recipient, content
+    except (SyntaxError, ValueError):
+        print("Failed to parse the LLM response. Check the response format.")
+        return None, None
+    
 def parse_command_with_llm(command):
     question = (
         f"I need to draft an email based on the following user input. Please analyze the input to identify the recipient's name and the main message content.\n\n"
@@ -55,7 +92,7 @@ def generate_email_content(recipient_name, content, context_detail):
     #Using Local LLm to generate the subject and body of the email based on the prompt-  This will help in intelligent email creation
     question = (
         f"Write a professional email to {recipient_name}. Generate an appropriate subject line and relevant body of the email based on the following input: '{content}' and '{context_detail}'.\n"
-        f"The body should start with a proper salutation including the recipient's name, followed by two line breaks, and then the remaining body content. Always end the body with '\\n\\nRegards,\\n\\nVarun'.\n"
+        f"The body should start with a proper salutation including the recipient's name, followed by two line breaks, and then the remaining body content. Always end the body with '\\n\\nRegards,\\n\\Swati'.\n"
         f"Ensure all line breaks are represented as '\\n' and special characters are properly escaped in the JSON.\n"
         f"Return the output strictly in **JSON format** with two fields: 'subject' and 'body'. Do not include any additional text, explanations, or code.\n\n"
         f"Example of the required JSON format:\n"

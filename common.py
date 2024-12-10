@@ -18,7 +18,8 @@ emailDataBase = {
     "Vicky": "varunsahni0786@gmail.com",
     "Vardan": "varunsahni10134@gmail.com",
     "Varun": "varunsahni260897@gmail.com",
-    "Swati": "swatia600@gmail.com"
+    "Swati": "swatia600@gmail.com",
+    "neha": "swati.arora1709@gmail.com"
 }
 
 from difflib import get_close_matches

@@ -90,7 +90,7 @@ def read_pdf_and_answer(user_input):
 
         llm_response = result['answer'].strip() if result['answer'] else "{}"
 
-        print(f"Raw LLM response: {llm_response}")
+        #print(f"Raw LLM response: {llm_response}")
 
         # Clean up the LLM response
         if llm_response.startswith("```") and llm_response.endswith("```"):
